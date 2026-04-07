@@ -70,6 +70,7 @@ The decisions that determine whether your DNS architecture scales, survives fail
 - **DeployIfNotExists for PE record lifecycle, custom RBAC role for exceptions.** Manual DNS record management does not scale. Automate the default, gate the exception.
 - **Resolver in every production region.** Private DNS Zones are global. A second Resolver is additive. No zone sync, no conflict.
 - **Firewall DNS Proxy as the query log.** Every query captured via `AzureFirewallDnsProxy` in Azure Monitor. Full visibility comes with the architecture, no additional instrumentation required.
+- **DNS Security Policy as the enforcement layer.** Applied at the VNet level, it evaluates queries before they leave the spoke: allow, block, or alert by domain list, with optional Microsoft Threat Intelligence feed for known malicious domains. It complements Firewall DNS Proxy — centralized resolution makes policy enforcement consistent across the estate.
 
 *This is not a complex architecture. It is a set of deliberate decisions made at the right moment, before the estate grows, before the incident, before the retroactive fix becomes a project.*
 
