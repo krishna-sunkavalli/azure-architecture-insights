@@ -21,5 +21,9 @@ desktop.ini
 # Environment variables
 .env
 
+# Excel temp files
+~$*.xlsx
+~$*.xls
+
 # Internal reference docs
 WRITING_GUIDE.md
