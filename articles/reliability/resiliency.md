@@ -180,7 +180,7 @@ Resiliency is only as strong as the weakest service in the stack. The following 
 
 ---
 
-### Microsoft Foundry (Azure AI Foundry)
+### Microsoft Foundry
 
 | | |
 |---|---|
