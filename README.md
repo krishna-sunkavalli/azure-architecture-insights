@@ -14,6 +14,10 @@ Krishna Sunkavalli — Sr. Solutions Engineer, Cloud & AI Platforms, Microsoft
 
 - [DNS Resolution in Azure: Getting It Right at Scale](articles/network/dns.md) — Enterprise DNS architecture: Private Resolver, Firewall DNS Proxy, Private Endpoints, and hybrid resolution at scale.
 
+### Reliability
+
+- [How to Design for Regional Failures in Azure](articles/reliability/resiliency.md) — Resiliency strategy and common pitfalls for 23 Azure services, from Front Door and AKS to Fabric, Databricks, and AI Foundry.
+
 ---
 
 Licensed under [CC BY 4.0](LICENSE). Content may be shared or adapted with attribution.

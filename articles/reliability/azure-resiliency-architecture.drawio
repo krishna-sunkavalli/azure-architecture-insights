@@ -1,0 +1,380 @@
+<mxfile host="app.diagrams.net" modified="2026-04-09" version="21.0.0">
+  <diagram name="Azure Workload Resilience" id="azure-resiliency">
+    <mxGraphModel dx="1200" dy="900" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="960" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- ═══════════════════════════════════════ -->
+        <!--  TITLE                                  -->
+        <!-- ═══════════════════════════════════════ -->
+        <mxCell id="title" value="Azure Workload Resilience: From Zone to Region"
+          style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=18;fontStyle=1;"
+          vertex="1" parent="1">
+          <mxGeometry x="300" y="15" width="800" height="35" as="geometry" />
+        </mxCell>
+
+        <!-- ═══════════════════════════════════════ -->
+        <!--  GLOBAL LAYER                           -->
+        <!-- ═══════════════════════════════════════ -->
+
+        <!-- Users -->
+        <mxCell id="users" value="&lt;b&gt;Users&lt;/b&gt;"
+          style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;fontStyle=1;"
+          vertex="1" parent="1">
+          <mxGeometry x="620" y="65" width="90" height="55" as="geometry" />
+        </mxCell>
+
+        <!-- Azure Front Door -->
+        <mxCell id="frontdoor" value="&lt;b&gt;Azure Front Door&lt;/b&gt;&lt;br&gt;Primary path · WAF · Anycast"
+          style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;arcSize=10;"
+          vertex="1" parent="1">
+          <mxGeometry x="250" y="185" width="210" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- Traffic Manager -->
+        <mxCell id="tm" value="&lt;b&gt;Traffic Manager&lt;/b&gt;&lt;br&gt;DNS fallback · Priority routing"
+          style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;arcSize=10;"
+          vertex="1" parent="1">
+          <mxGeometry x="870" y="185" width="210" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- Front Door outage callout -->
+        <mxCell id="fd-note" value="If Front Door fails, Traffic Manager&lt;br&gt;reroutes via DNS to either region"
+          style="text;html=1;strokeColor=#9673a6;fillColor=#f3eef7;align=center;verticalAlign=middle;fontSize=9;fontStyle=2;rounded=1;"
+          vertex="1" parent="1">
+          <mxGeometry x="870" y="135" width="210" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- ═══════════════════════════════════════ -->
+        <!--  PRIMARY REGION                         -->
+        <!-- ═══════════════════════════════════════ -->
+
+        <!-- Primary Region Box -->
+        <mxCell id="primaryRegion" value=""
+          style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=2;opacity=25;arcSize=3;"
+          vertex="1" parent="1">
+          <mxGeometry x="30" y="295" width="590" height="590" as="geometry" />
+        </mxCell>
+
+        <mxCell id="primaryLabel" value="&lt;b&gt;PRIMARY REGION  (Active)&lt;/b&gt;"
+          style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=13;fontStyle=1;fontColor=#23527e;"
+          vertex="1" parent="1">
+          <mxGeometry x="45" y="302" width="300" height="24" as="geometry" />
+        </mxCell>
+
+        <!-- AZ 1 -->
+        <mxCell id="az1" value="&lt;b&gt;AZ 1&lt;/b&gt;"
+          style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f9f9f9;strokeColor=#bbbbbb;fontSize=10;verticalAlign=top;arcSize=5;"
+          vertex="1" parent="1">
+          <mxGeometry x="50" y="335" width="170" height="470" as="geometry" />
+        </mxCell>
+
+        <!-- AZ 2 -->
+        <mxCell id="az2" value="&lt;b&gt;AZ 2&lt;/b&gt;"
+          style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f9f9f9;strokeColor=#bbbbbb;fontSize=10;verticalAlign=top;arcSize=5;"
+          vertex="1" parent="1">
+          <mxGeometry x="235" y="335" width="170" height="470" as="geometry" />
+        </mxCell>
+
+        <!-- AZ 3 -->
+        <mxCell id="az3" value="&lt;b&gt;AZ 3&lt;/b&gt;"
+          style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f9f9f9;strokeColor=#bbbbbb;fontSize=10;verticalAlign=top;arcSize=5;"
+          vertex="1" parent="1">
+          <mxGeometry x="420" y="335" width="170" height="470" as="geometry" />
+        </mxCell>
+
+        <!-- AZ1 Resources -->
+        <mxCell id="app1" value="App Service"
+          style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;"
+          vertex="1" parent="1">
+          <mxGeometry x="65" y="375" width="140" height="42" as="geometry" />
+        </mxCell>
+        <mxCell id="sql1" value="Azure SQL DB"
+          style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;"
+          vertex="1" parent="1">
+          <mxGeometry x="65" y="435" width="140" height="42" as="geometry" />
+        </mxCell>
+        <mxCell id="stor1" value="Storage (ZRS)"
+          style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=10;"
+          vertex="1" parent="1">
+          <mxGeometry x="65" y="495" width="140" height="42" as="geometry" />
+        </mxCell>
+        <mxCell id="cosmos1" value="Cosmos DB"
+          style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;"
+          vertex="1" parent="1">
+          <mxGeometry x="65" y="555" width="140" height="42" as="geometry" />
+        </mxCell>
+
+        <!-- AZ2 Resources -->
+        <mxCell id="app2" value="App Service"
+          style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;"
+          vertex="1" parent="1">
+          <mxGeometry x="250" y="375" width="140" height="42" as="geometry" />
+        </mxCell>
+        <mxCell id="sql2" value="Azure SQL DB"
+          style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;"
+          vertex="1" parent="1">
+          <mxGeometry x="250" y="435" width="140" height="42" as="geometry" />
+        </mxCell>
+        <mxCell id="stor2" value="Storage (ZRS)"
+          style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=10;"
+          vertex="1" parent="1">
+          <mxGeometry x="250" y="495" width="140" height="42" as="geometry" />
+        </mxCell>
+        <mxCell id="cosmos2" value="Cosmos DB"
+          style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;"
+          vertex="1" parent="1">
+          <mxGeometry x="250" y="555" width="140" height="42" as="geometry" />
+        </mxCell>
+
+        <!-- AZ3 Resources -->
+        <mxCell id="app3" value="App Service"
+          style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;"
+          vertex="1" parent="1">
+          <mxGeometry x="435" y="375" width="140" height="42" as="geometry" />
+        </mxCell>
+        <mxCell id="sql3" value="Azure SQL DB"
+          style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;"
+          vertex="1" parent="1">
+          <mxGeometry x="435" y="435" width="140" height="42" as="geometry" />
+        </mxCell>
+        <mxCell id="stor3" value="Storage (ZRS)"
+          style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=10;"
+          vertex="1" parent="1">
+          <mxGeometry x="435" y="495" width="140" height="42" as="geometry" />
+        </mxCell>
+        <mxCell id="cosmos3" value="Cosmos DB"
+          style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;"
+          vertex="1" parent="1">
+          <mxGeometry x="435" y="555" width="140" height="42" as="geometry" />
+        </mxCell>
+
+        <!-- Shared infra within primary (spanning all AZs) -->
+        <mxCell id="firewall" value="&lt;b&gt;Azure Firewall&lt;/b&gt; · Zone-Redundant · All 3 zones at creation"
+          style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;"
+          vertex="1" parent="1">
+          <mxGeometry x="50" y="640" width="280" height="42" as="geometry" />
+        </mxCell>
+        <mxCell id="dnsresolver" value="&lt;b&gt;DNS Private Resolver&lt;/b&gt; · Zone-Redundant"
+          style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;"
+          vertex="1" parent="1">
+          <mxGeometry x="345" y="640" width="255" height="42" as="geometry" />
+        </mxCell>
+
+        <!-- Failover group note -->
+        <mxCell id="fgnote" value="App connects to &lt;b&gt;Failover Group Listener&lt;/b&gt;, not server endpoint — server endpoint does not follow failover"
+          style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=9;fontStyle=2;align=center;"
+          vertex="1" parent="1">
+          <mxGeometry x="50" y="700" width="570" height="32" as="geometry" />
+        </mxCell>
+
+        <!-- Platform manages AZ failover note -->
+        <mxCell id="az-auto" value="✓  Microsoft manages AZ failover automatically across all zone-redundant services"
+          style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=9;fontStyle=2;fontColor=#006600;"
+          vertex="1" parent="1">
+          <mxGeometry x="50" y="745" width="570" height="22" as="geometry" />
+        </mxCell>
+
+        <!-- ═══════════════════════════════════════ -->
+        <!--  SECONDARY REGION                       -->
+        <!-- ═══════════════════════════════════════ -->
+
+        <!-- Secondary Region Box -->
+        <mxCell id="secondaryRegion" value=""
+          style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;strokeWidth=2;opacity=25;arcSize=3;"
+          vertex="1" parent="1">
+          <mxGeometry x="720" y="295" width="390" height="480" as="geometry" />
+        </mxCell>
+
+        <mxCell id="secondaryLabel" value="&lt;b&gt;SECONDARY REGION  (DR / Active-Passive)&lt;/b&gt;"
+          style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=12;fontStyle=1;fontColor=#6a3ea0;"
+          vertex="1" parent="1">
+          <mxGeometry x="730" y="302" width="370" height="24" as="geometry" />
+        </mxCell>
+
+        <mxCell id="app-dr" value="App Service&lt;br&gt;&lt;i&gt;Warm Spare — min instances&lt;/i&gt;"
+          style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;opacity=75;"
+          vertex="1" parent="1">
+          <mxGeometry x="735" y="345" width="360" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="sql-dr" value="Azure SQL DB&lt;br&gt;&lt;i&gt;Failover Group Secondary — read-only until promoted&lt;/i&gt;"
+          style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;opacity=75;"
+          vertex="1" parent="1">
+          <mxGeometry x="735" y="415" width="360" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="stor-dr" value="Storage RA-GZRS&lt;br&gt;&lt;i&gt;Read-only secondary — failover is customer-initiated&lt;/i&gt;"
+          style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=10;opacity=75;"
+          vertex="1" parent="1">
+          <mxGeometry x="735" y="485" width="360" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="cosmos-dr" value="Cosmos DB&lt;br&gt;&lt;i&gt;Multi-region write or read replica&lt;/i&gt;"
+          style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;opacity=75;"
+          vertex="1" parent="1">
+          <mxGeometry x="735" y="555" width="360" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="dns-dr" value="DNS Private Resolver&lt;br&gt;&lt;i&gt;Secondary forwarder target for on-prem hybrid DNS&lt;/i&gt;"
+          style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;opacity=75;"
+          vertex="1" parent="1">
+          <mxGeometry x="735" y="625" width="360" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- ═══════════════════════════════════════ -->
+        <!--  WARNING BOX                            -->
+        <!-- ═══════════════════════════════════════ -->
+
+        <mxCell id="warning" value="⚠  Regional failover is ALWAYS customer-orchestrated.&lt;br&gt;Azure does not redirect traffic to secondary on a regional event. You define the trigger, execute the runbook, manage the failback."
+          style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;align=center;verticalAlign=middle;fontSize=10;fontStyle=1;"
+          vertex="1" parent="1">
+          <mxGeometry x="720" y="800" width="390" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- ═══════════════════════════════════════ -->
+        <!--  LEGEND                                 -->
+        <!-- ═══════════════════════════════════════ -->
+
+        <mxCell id="legend-box" value=""
+          style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#aaaaaa;fontSize=10;"
+          vertex="1" parent="1">
+          <mxGeometry x="30" y="800" width="420" height="130" as="geometry" />
+        </mxCell>
+
+        <mxCell id="legend-title" value="&lt;b&gt;Legend&lt;/b&gt;"
+          style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=11;fontStyle=1;"
+          vertex="1" parent="1">
+          <mxGeometry x="45" y="808" width="100" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="leg1" value=""
+          style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;"
+          vertex="1" parent="1">
+          <mxGeometry x="45" y="832" width="22" height="16" as="geometry" />
+        </mxCell>
+        <mxCell id="leg1t" value="Compute"
+          style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=10;"
+          vertex="1" parent="1">
+          <mxGeometry x="73" y="830" width="80" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="leg2" value=""
+          style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;"
+          vertex="1" parent="1">
+          <mxGeometry x="160" y="832" width="22" height="16" as="geometry" />
+        </mxCell>
+        <mxCell id="leg2t" value="Relational DB"
+          style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=10;"
+          vertex="1" parent="1">
+          <mxGeometry x="188" y="830" width="90" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="leg3" value=""
+          style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;"
+          vertex="1" parent="1">
+          <mxGeometry x="285" y="832" width="22" height="16" as="geometry" />
+        </mxCell>
+        <mxCell id="leg3t" value="Storage"
+          style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=10;"
+          vertex="1" parent="1">
+          <mxGeometry x="313" y="830" width="80" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="leg4" value=""
+          style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;"
+          vertex="1" parent="1">
+          <mxGeometry x="45" y="858" width="22" height="16" as="geometry" />
+        </mxCell>
+        <mxCell id="leg4t" value="NoSQL / Distributed DB"
+          style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=10;"
+          vertex="1" parent="1">
+          <mxGeometry x="73" y="856" width="130" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="leg5" value=""
+          style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;"
+          vertex="1" parent="1">
+          <mxGeometry x="210" y="858" width="22" height="16" as="geometry" />
+        </mxCell>
+        <mxCell id="leg5t" value="Network / Identity"
+          style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=10;"
+          vertex="1" parent="1">
+          <mxGeometry x="238" y="856" width="120" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="leg-note" value="Faded resources in secondary = standby until failover is triggered"
+          style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=9;fontStyle=2;"
+          vertex="1" parent="1">
+          <mxGeometry x="45" y="885" width="395" height="18" as="geometry" />
+        </mxCell>
+
+        <mxCell id="leg-note2" value="Zone-redundant services: AZ failover is platform-managed.  Regional failover: always customer-orchestrated."
+          style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=9;fontStyle=2;"
+          vertex="1" parent="1">
+          <mxGeometry x="45" y="903" width="395" height="18" as="geometry" />
+        </mxCell>
+
+        <!-- ═══════════════════════════════════════ -->
+        <!--  EDGES                                  -->
+        <!-- ═══════════════════════════════════════ -->
+
+        <!-- Users → Front Door (solid blue) -->
+        <mxCell id="e1" value=""
+          style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;exitX=0.3;exitY=1;exitDx=0;exitDy=0;entryX=0.7;entryY=0;entryDx=0;entryDy=0;strokeColor=#6c8ebf;strokeWidth=2.5;"
+          edge="1" source="users" target="frontdoor" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Users → Traffic Manager (dashed purple) -->
+        <mxCell id="e2" value=""
+          style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;exitX=0.7;exitY=1;exitDx=0;exitDy=0;entryX=0.3;entryY=0;entryDx=0;entryDy=0;dashed=1;strokeColor=#9673a6;strokeWidth=1.5;"
+          edge="1" source="users" target="tm" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Front Door → Primary Region (solid blue, primary traffic) -->
+        <mxCell id="e3" value="Primary traffic"
+          style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;exitX=0.2;exitY=1;exitDx=0;exitDy=0;entryX=0.3;entryY=0;entryDx=0;entryDy=0;strokeColor=#6c8ebf;strokeWidth=2.5;fontSize=9;"
+          edge="1" source="frontdoor" target="primaryRegion" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Traffic Manager → Primary Region (dashed, normal path fallback) -->
+        <mxCell id="e4" value="Normal path"
+          style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;exitX=0.1;exitY=1;exitDx=0;exitDy=0;entryX=0.8;entryY=0;entryDx=0;entryDy=0;dashed=1;strokeColor=#9673a6;strokeWidth=1.5;fontSize=9;"
+          edge="1" source="tm" target="primaryRegion" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Traffic Manager → Secondary Region (dashed, Front Door outage path) -->
+        <mxCell id="e5" value="FD outage path"
+          style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;exitX=0.9;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;dashed=1;strokeColor=#9673a6;strokeWidth=1.5;fontSize=9;"
+          edge="1" source="tm" target="secondaryRegion" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1090" y="270" />
+              <mxPoint x="915" y="270" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Primary → Secondary: Async replication (gold, thick) -->
+        <mxCell id="e6" value="Async replication (RPO &gt; 0)"
+          style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#d6b656;strokeWidth=3;fillColor=#fff2cc;fontSize=10;fontStyle=2;"
+          edge="1" source="primaryRegion" target="secondaryRegion" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Secondary → Warning box (customer-orchestrated, dashed red) -->
+        <mxCell id="e7" value="Customer-orchestrated"
+          style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;dashed=1;strokeColor=#b85450;strokeWidth=2;fontSize=9;fontStyle=1;"
+          edge="1" source="secondaryRegion" target="warning" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
