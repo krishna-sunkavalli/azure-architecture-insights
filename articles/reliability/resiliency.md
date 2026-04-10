@@ -234,6 +234,24 @@ Resiliency is only as strong as the weakest service in the stack. The following 
 
 ---
 
+### Microsoft Sentinel
+
+| | |
+|---|---|
+| **Resiliency Strategy** | • Sentinel is workspace-scoped — deploy a dedicated Log Analytics workspace per region for workloads that require regional observability continuity<br>• Use workspace replication or cross-workspace queries to maintain visibility during a regional workspace degradation<br>• Export analytics rules, workbooks, and automation playbooks as source-controlled ARM templates or Sentinel repositories — platform recovery restores infrastructure, not your configurations<br>• For multi-region deployments: connect region-local data connectors to region-local workspaces; avoid routing all telemetry through a single centralized workspace<br>• Test that alert rules and automation playbooks are functional in the secondary workspace before a failover event |
+| **Common Pitfalls** | • Single centralized Sentinel workspace for all regions — a workspace degradation silences security monitoring exactly when threat activity is most likely<br>• Analytics rules and playbooks with no source control backup — a workspace loss requires manual recreation from memory<br>• Automation playbooks (Logic Apps) without zone-redundant or multi-region coverage — a playbook that cannot execute during an incident provides no automated response |
+
+---
+
+### Private Endpoints / Private Link
+
+| | |
+|---|---|
+| **Resiliency Strategy** | • Deploy private endpoints in every region where a service is consumed — a private endpoint is regional; it does not follow the service across regions automatically<br>• Create private DNS zone links in every VNet that needs resolution — missing links cause silent DNS failures at failover time, not connection errors<br>• For multi-region workloads: provision private endpoints for the secondary region's service instances before a failover event — private endpoint creation takes time and cannot be rushed during an incident<br>• Validate that NSG rules and UDRs allow private endpoint traffic in both regions<br>• Include private endpoint DNS resolution in every DR drill — it is the most commonly broken dependency at failover |
+| **Common Pitfalls** | • Private endpoint created only in the primary region — failover exposes the secondary region service on a public endpoint or breaks connectivity entirely<br>• Private DNS zone linked only to primary VNets — secondary region workloads cannot resolve the private endpoint FQDN<br>• Assuming private endpoint provisioning is instant — endpoint creation and DNS propagation can take several minutes, which matters during a time-pressured failover<br>• NSG rules blocking private endpoint subnet traffic silently — the connection appears to route correctly but drops at the NIC level |
+
+---
+
 ## Closing
 
 Resiliency is not a feature you turn on. It is a set of deliberate decisions made per service, per failure domain, and per workload criticality. Not every workload needs active-active across regions. But every workload needs an honest answer to the question: what happens when this region is unavailable, and have we tested it?
