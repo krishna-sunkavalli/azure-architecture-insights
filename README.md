@@ -16,7 +16,7 @@ Krishna Sunkavalli — Sr. Solutions Engineer, Cloud & AI Platforms, Microsoft
 
 ### Reliability
 
-- [How to Design for Regional Failures in Azure](articles/reliability/resiliency.md) — Resiliency strategy and common pitfalls for 23 Azure services, from Front Door and AKS to Fabric, Databricks, and AI Foundry.
+- [How to Design for Regional Failures in Azure](articles/reliability/resiliency.md) — Resiliency strategy and common pitfalls for 25 Azure services, from Front Door and AKS to Fabric, Databricks, and Microsoft Foundry.
 
 ---
 
