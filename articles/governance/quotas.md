@@ -111,20 +111,13 @@ If the autoscaler max times node vCPU count exceeds available quota, resize the 
 
 When you operate across multiple subscriptions, quota management becomes a cross-subscription coordination problem. A subscription for AKS workloads, a subscription for data platform resources, a subscription for shared services: each has its own quota ceiling, and managing increases independently across all of them does not scale.
 
-Azure Quota Groups let you pool quota allocation across multiple subscriptions under a shared regional limit. Instead of filing separate increase requests per subscription per region, the platform team manages a ceiling at the group level and allocates headroom to subscriptions within it.
+Azure Quota Groups eliminate the per-subscription ceiling by pooling quota allocation across multiple subscriptions under a single ARM object anchored to a Management Group. Instead of filing increase requests against individual subscriptions and manually redistributing headroom, the platform team manages a group-level ceiling and transfers quota to subscriptions as needed, without Microsoft intervention for each reallocation.
 
-This is a platform engineering responsibility. It belongs at the landing zone design layer. Application teams should not be filing increase requests against their own subscription. The platform team should be managing regional capacity headroom centrally and pre-allocating to subscriptions before those subscriptions need it.
+One thing the feature does not change: quota operations are still scoped per region and per VM family. A Quota Group increase request for Standard_Dv5 in West Europe is a separate request from the same SKU family in North Europe. The group removes the subscription-level friction; it does not collapse the regional dimension. You still need to plan and request headroom per operating region. The benefit is that once that headroom exists at the group level, reallocating it between subscriptions in that region is self-service.
 
-The subscription-per-workload model that underlies proper landing zone design makes this more important, not less. More subscriptions means more independent quota limits unless Quota Groups are in place to aggregate them.
+Two constraints worth knowing before designing around it: Quota Groups are available on Enterprise Agreement and Microsoft Customer Agreement subscriptions only. They cover IaaS compute resources only. PaaS services, managed databases, and analytics capacity are outside scope.
 
-```azurecli
-# List quota group allocations
-az rest \
-  --method GET \
-  --url "https://management.azure.com/providers/Microsoft.Quota/groupQuotas?api-version=2023-06-01-preview"
-```
-
-Quota Groups are in preview. Validate current support for your subscription type and register the required preview feature before building a platform dependency on it.
+This is a platform engineering responsibility. Application teams should not be managing their own increase requests against individual subscriptions. The platform team manages group-level headroom per region and pre-allocates to subscriptions before those subscriptions need it.
 
 ---
 
@@ -160,6 +153,6 @@ az capacity reservation create \
 
 Quota is not a one-time configuration task. Default quotas erode as workloads grow. New regions start empty. GPU and AI-specific SKU families start at zero and require manual approval. DR regions carry defaults until someone explicitly requests otherwise.
 
-The teams that avoid quota-related incidents are not doing anything complicated. They review quota headroom in every operating region during environment design. They request increases for production SKU families before the first deployment, not after the first failure. They set DR region quota to match primary region requirements. They use Quota Groups when operating across more than two subscriptions. They start GPU quota requests early because the lead time is long and there is no automated path.
+The teams that avoid quota-related incidents are not doing anything complicated. They review quota headroom in every operating region during environment design. They request increases for production SKU families before the first deployment, not after the first failure. They set DR region quota to match primary region requirements. They use Quota Groups to centralise compute quota management across subscriptions, with the understanding that the group still requires per-region planning. They start GPU quota requests early because the lead time is long and there is no automated path.
 
 Quota limits that surface during incidents are preventable. Every one of them represents a ceiling that was discoverable and addressable before the deployment that revealed it.
