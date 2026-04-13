@@ -13,6 +13,7 @@ Krishna Sunkavalli — Sr. Solutions Engineer, Cloud & AI Platforms, Microsoft
 ### Network
 
 - [DNS Resolution in Azure: Getting It Right at Scale](articles/network/dns.md) — Enterprise DNS architecture: Private Resolver, Firewall DNS Proxy, Private Endpoints, and hybrid resolution at scale.
+- [ExpressRoute in Production: Design Decisions, Common Failures, and Troubleshooting](articles/network/expressroute.md) — Why most ExpressRoute failures are routing decisions made at design time, and how to diagnose asymmetric routing before it becomes a two-day incident.
 
 ### Reliability
 
