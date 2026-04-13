@@ -32,11 +32,46 @@ Use ErGw2AZ or higher. ErGw1AZ supports zone redundancy but capacity is limited 
 
 The GatewaySubnet must be /27 or larger. A /28 works for non-AZ gateways but fails silently for zone-redundant deployments. Resize the subnet before deploying an AZ gateway, not during.
 
+Deploy a zone-redundant gateway with the correct SKU:
+```azurecli
+az network vnet-gateway create \
+  --resource-group <rg> \
+  --name <gateway-name> \
+  --vnet <vnet-name> \
+  --gateway-type ExpressRoute \
+  --sku ErGw2AZ \
+  --public-ip-address <pip-name> \
+  --location <region>
+```
+
+Verify the current gateway SKU on an existing deployment:
+```azurecli
+az network vnet-gateway show \
+  --resource-group <rg> \
+  --name <gateway-name> \
+  --query "{SKU:sku.name, Tier:sku.tier, ActiveActive:activeActive}" \
+  --output table
+```
+
 ### Active-Active Over Active-Passive
 
 Every ExpressRoute circuit has two connections to two different MSEE devices. Active-passive wastes one of them. The passive connection adds to MTTR on failover — the standby instance must initialize and BGP must reconverge before traffic resumes. Active-active uses both connections simultaneously, increases aggregate throughput, and fails over in sub-second when BFD is enabled.
 
-Default configuration is often active-passive. Verify this explicitly.
+Default configuration is often active-passive. Verify this explicitly:
+```azurecli
+az network vnet-gateway show \
+  --resource-group <rg> \
+  --name <gateway-name> \
+  --query "activeActive"
+```
+
+If this returns `false`, the gateway is active-passive. Update it:
+```azurecli
+az network vnet-gateway update \
+  --resource-group <rg> \
+  --name <gateway-name> \
+  --set activeActive=true
+```
 
 ### Two Circuits, Two Peering Locations
 
@@ -44,17 +79,56 @@ A single circuit with two connections protects against MSEE failure. It does not
 
 For most enterprise workloads, two circuits from the same provider across two peering locations is the right balance of cost and protection. Equinix and Telekom, for example, offer diverse entry points in the same metro.
 
+List available peering locations to identify diverse options:
+```azurecli
+az network express-route list-service-providers \
+  --query "[].{Provider:name, Locations:peeringLocations}" \
+  --output table
+```
+
 ### Never Terminate Both Connections on the Same CPE
 
 Two connections from the circuit into one on-premises CPE is not HA. It is a single device failure away from losing both paths simultaneously. Each connection must terminate on a separate edge router.
 
 This is the most common misconfiguration in ExpressRoute deployments and the one most likely to be discovered for the first time during an incident.
 
+Verify the circuit connection state — both Primary and Secondary should show `Connected`:
+```azurecli
+az network express-route show \
+  --resource-group <rg> \
+  --name <circuit-name> \
+  --query "{CircuitState:circuitProvisioningState, PrimaryPort:peerings[0].primaryAzurePort, SecondaryPort:peerings[0].secondaryAzurePort, ServiceKey:serviceKey}" \
+  --output table
+```
+
 ### Enable BFD
 
 BFD (Bidirectional Forwarding Detection) reduces link failure detection from approximately three minutes under standard BGP timers to sub-second. Without BFD, a silent link failure leaves BGP up but traffic blackholing for the full keepalive interval before reconvergence.
 
-BFD is supported on all current MSEE devices and most enterprise CPE. Enable it. There is no meaningful downside.
+BFD is supported on all current MSEE devices and most enterprise CPE. Enable it on the peering:
+```azurecli
+az network express-route peering update \
+  --resource-group <rg> \
+  --circuit-name <circuit-name> \
+  --name AzurePrivatePeering \
+  --set microsoftPeeringConfig.advertisedPublicPrefixes=[] \
+  --peering-type AzurePrivatePeering
+```
+
+On the CPE side, the equivalent for a Cisco IOS-XE edge router:
+```
+router bgp 65001
+ neighbor <MSEE-IP> fall-over bfd
+!
+bfd-template single-hop MSEE-BFD
+ interval min-tx 300 min-rx 300 multiplier 3
+```
+
+Verify BFD sessions are up on Cisco:
+```
+show bfd neighbors
+show bgp neighbors <MSEE-IP> | include BFD
+```
 
 ### Route Discipline
 
@@ -62,19 +136,103 @@ Advertise only the prefixes you intend to advertise. Leaking a default route (0.
 
 Set a maximum prefix limit on the gateway to protect against a misconfigured on-premises router advertising a full internet routing table into your Azure environment.
 
+On a Cisco CPE, restrict outbound BGP advertisements with a prefix list:
+```
+ip prefix-list AZURE-OUT seq 10 permit 10.1.0.0/16
+ip prefix-list AZURE-OUT seq 20 permit 10.2.0.0/16
+!
+route-map TO-AZURE permit 10
+ match ip address prefix-list AZURE-OUT
+!
+router bgp 65001
+ neighbor <MSEE-IP> route-map TO-AZURE out
+ neighbor <MSEE-IP> maximum-prefix 200 80
+```
+
+The `maximum-prefix 200 80` parameter alerts at 80% and tears down the BGP session at 200 prefixes — protecting Azure from a route leak from on-premises.
+
+Check what prefixes are currently being received from Azure on the CPE:
+```
+show bgp neighbors <MSEE-IP> received-routes
+show ip bgp summary
+```
+
 ---
 
 ## Common Pitfalls
 
 **Failing to test the secondary path.** Most teams test the primary connection and assume the secondary works. The secondary path is untested until failover, which means its operational status is unknown. Simulate a connection failure in a maintenance window and verify traffic reconverges on the expected path.
 
+To force traffic off the primary and onto the secondary, temporarily set a higher AS path prepend on the primary from the CPE (Cisco example):
+```
+route-map TO-AZURE-PRIMARY permit 10
+ set as-path prepend 65001 65001 65001
+!
+router bgp 65001
+ neighbor <MSEE-PRIMARY-IP> route-map TO-AZURE-PRIMARY out
+```
+Run traceroute from an Azure VM during this window. Confirm traffic reconverges on the secondary path within your expected BFD/BGP timer window. Remove the prepend after validation.
+
 **VPN as a DR path for latency-sensitive workloads.** VPN over internet provides different latency, different throughput, and different MTU characteristics than ExpressRoute. Applications tuned for ExpressRoute latency will behave differently over VPN. VPN is a last-resort backup for disaster scenarios, not a transparent failover path.
+
+Measure baseline latency and throughput over ExpressRoute before designing a VPN fallback. The delta will tell you which workloads can tolerate the fallback and which cannot:
+```bash
+# Latency baseline from Azure VM to on-premises
+ping -c 100 <on-premises-ip> | tail -2
+
+# Throughput test with iperf3 (requires iperf3 server on-premises)
+iperf3 -c <on-premises-ip> -t 30 -P 4
+```
 
 **Non-zone-redundant ExpressRoute gateway in an otherwise zone-redundant design.** A workload with zone-redundant VMs, zone-redundant databases, and a non-AZ ExpressRoute gateway has a clear single point of failure. The gateway lives in a single zone and a zone failure severs on-premises connectivity regardless of how redundant everything else is.
 
+Check the current gateway SKU and whether it is zone-redundant:
+```azurecli
+az network vnet-gateway show \
+  --resource-group <rg> \
+  --name <gateway-name> \
+  --query "{SKU:sku.name, Zones:zones}" \
+  --output table
+```
+SKUs ending in `AZ` (ErGw1AZ, ErGw2AZ, ErGwScale) are zone-redundant. All others are not.
+
 **No BGP monitoring.** BGP session flaps and route changes are invisible without explicit monitoring. Azure Network Watcher and Connection Monitor expose this, but require configuration. Treat BGP session health as a first-class alert, not an afterthought.
 
+Create a Connection Monitor test to baseline latency and catch path changes:
+```azurecli
+az network watcher connection-monitor create \
+  --name ER-OnPrem-Monitor \
+  --resource-group <rg> \
+  --location <region> \
+  --source-resource-id <azure-vm-resource-id> \
+  --dest-address <on-premises-ip> \
+  --dest-port 443 \
+  --monitoring-interval 30
+```
+
+Set a BGP availability alert via Azure Monitor — alert when `BgpAvailability` drops below 100% on either Primary or Secondary path:
+```azurecli
+az monitor metrics alert create \
+  --name "ER-BGP-Availability" \
+  --resource-group <rg> \
+  --scopes <expressroute-circuit-resource-id> \
+  --condition "avg BgpAvailability < 100" \
+  --window-size 5m \
+  --evaluation-frequency 1m \
+  --severity 1 \
+  --action <action-group-id>
+```
+
 **Assuming the Microsoft peering and private peering operate the same way.** Private peering connects to your VNet address space. Microsoft peering connects to Microsoft public service endpoints (Office 365, Azure PaaS public IPs). Route advertisements, prefix requirements, and NAT requirements differ between the two. Conflating them leads to misconfigured filters and unexpected traffic paths.
+
+List configured peerings and their state on a circuit:
+```azurecli
+az network express-route peering list \
+  --resource-group <rg> \
+  --circuit-name <circuit-name> \
+  --query "[].{Type:peeringType, State:state, PrimarySubnet:primaryPeerAddressPrefix, SecondarySubnet:secondaryPeerAddressPrefix, VLAN:vlanId}" \
+  --output table
+```
 
 ---
 
@@ -195,10 +353,57 @@ If outbound and return traffic do not follow the same design, the issue is path 
 
 Four monitoring surfaces that should be configured before the circuit goes live, not after the first incident:
 
-- **Azure Monitor ExpressRoute metrics** — bits in/out, BGP availability, ARP availability per peering. Alert on BGP availability dropping below 100%.
-- **Network Watcher Connection Monitor** — end-to-end latency and reachability tests between Azure and on-premises endpoints. Baseline during normal operation; alert on deviation.
-- **BGP session monitoring on CPE** — Azure metrics show the Azure side of the BGP session. CPE-side monitoring shows the on-premises perspective. Both are needed. A session that appears up in Azure and down on the CPE is a split view that diagnostic tools miss.
-- **Route change alerting** — a sudden increase or decrease in advertised prefix count is a leading indicator of misconfiguration. Configure alerts on prefix count changes in both directions.
+**Azure Monitor ExpressRoute metrics** — bits in/out, BGP availability, ARP availability per peering. Alert on BGP availability dropping below 100%.
+
+Pull current metrics to establish a baseline:
+```azurecli
+az monitor metrics list \
+  --resource <expressroute-circuit-resource-id> \
+  --metric "BgpAvailability" "BitsInPerSecond" "BitsOutPerSecond" \
+  --interval PT1M \
+  --output table
+```
+
+**Network Watcher Connection Monitor** — end-to-end latency and reachability tests between Azure and on-premises endpoints. Baseline during normal operation; alert on deviation. See the pitfalls section for the creation command.
+
+**BGP session monitoring on CPE** — Azure metrics show the Azure side of the BGP session. CPE-side monitoring shows the on-premises perspective. Both are needed. A session that appears up in Azure and down on the CPE is a split view that diagnostic tools miss.
+
+On Cisco IOS-XE, get a full BGP session view including uptime, prefixes received, and message counters:
+```
+show bgp neighbors <MSEE-IP>
+show bgp neighbors <MSEE-IP> | include BGP state|prefixes|MsgRcvd|MsgSent|Uptime
+show ip route bgp
+```
+
+On Juniper:
+```
+show bgp neighbor <MSEE-IP>
+show route protocol bgp
+```
+
+**Route change alerting** — a sudden increase or decrease in advertised prefix count is a leading indicator of misconfiguration. Configure alerts on prefix count changes in both directions.
+
+Query the current prefix count Azure has learned from on-premises (both primary and secondary paths):
+```azurecli
+# Primary path
+az network express-route list-route-tables-summary \
+  --resource-group <rg> \
+  --name <circuit-name> \
+  --peering-name AzurePrivatePeering \
+  --path Primary \
+  --query "value[].{Neighbor:neighbor, V:v, MsgRcvd:msgRcvd, MsgSent:msgSent, Up:upDown, State:stateOrPfxRcd}" \
+  --output table
+
+# Secondary path
+az network express-route list-route-tables-summary \
+  --resource-group <rg> \
+  --name <circuit-name> \
+  --peering-name AzurePrivatePeering \
+  --path Secondary \
+  --output table
+```
+
+The `stateOrPfxRcd` column shows the number of prefixes received. Run this before and after any CPE routing change to confirm no unintended prefix leak or withdrawal.
 
 ---
 
