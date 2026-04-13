@@ -15,6 +15,10 @@ Krishna Sunkavalli — Sr. Solutions Engineer, Cloud & AI Platforms, Microsoft
 - [DNS Resolution in Azure: Getting It Right at Scale](articles/network/dns.md) — Enterprise DNS architecture: Private Resolver, Firewall DNS Proxy, Private Endpoints, and hybrid resolution at scale.
 - [ExpressRoute in Production: Design Decisions, Common Failures, and Troubleshooting](articles/network/expressroute.md) — Why most ExpressRoute failures are routing decisions made at design time, and how to diagnose asymmetric routing before it becomes a two-day incident.
 
+### Governance
+
+- [Azure Quotas Are a Capacity Planning Problem, Not a Support Ticket](articles/governance/quotas.md) — Why quota limits surface at the worst moments and how to manage regional capacity headroom as a platform engineering discipline.
+
 ### Reliability
 
 - [How to Design for Regional Failures in Azure](articles/reliability/resiliency.md) — Resiliency strategy and common pitfalls for 25 Azure services, from Front Door and AKS to Fabric, Databricks, and Microsoft Foundry.
