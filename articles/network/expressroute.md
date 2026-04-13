@@ -94,11 +94,89 @@ A workload in Azure sends a request to an on-premises endpoint. The return path 
 
 3. Run traceroute from both sides. The outbound and return paths should traverse the same network segments. If traceroute from Azure exits through ExpressRoute but the return path from on-premises exits through a different gateway or interface, the path is asymmetric.
 
+   From an Azure VM (Linux):
+   ```bash
+   traceroute <on-premises-ip>
+   ```
+
+   From an Azure VM (Windows):
+   ```powershell
+   Test-NetConnection -ComputerName <on-premises-ip> -TraceRoute
+   ```
+
+   From on-premises toward Azure, run the equivalent and compare exit interfaces. The BGP next-hop should be consistent in both directions.
+
 4. Check advertised prefixes. On the on-premises side, verify what prefixes are being advertised into BGP toward Azure. On the Azure side, use the ExpressRoute gateway route table to verify what prefixes Azure has learned. A missing or more-specific route on either side explains most asymmetric routing scenarios.
+
+   Get the routes advertised from Azure to on-premises (what Azure is telling your CPE):
+   ```azurecli
+   az network express-route list-route-tables \
+     --resource-group <rg> \
+     --name <circuit-name> \
+     --peering-name AzurePrivatePeering \
+     --path Primary
+   ```
+
+   Get the routes Azure has learned from on-premises (what your CPE is telling Azure):
+   ```azurecli
+   az network express-route list-route-tables-summary \
+     --resource-group <rg> \
+     --name <circuit-name> \
+     --peering-name AzurePrivatePeering \
+     --path Primary
+   ```
+
+   Get the effective routes on the ExpressRoute gateway NIC to see the full routing table Azure is using:
+   ```azurecli
+   az network nic show-effective-route-table \
+     --resource-group <rg> \
+     --name <gateway-nic-name> \
+     --output table
+   ```
 
 5. Check for UDRs overriding BGP. A User Defined Route in Azure can override a BGP-learned route and force traffic onto an unexpected path. Check all UDRs in subnets involved in the failing flow.
 
-6. Test private peering connectivity directly. In Azure, use Diagnose and Solve Problems on the ExpressRoute circuit and run the PsPing connectivity test. Cross-reference with packet capture on the MSEE side to verify whether traffic is reaching the Microsoft network edge and returning.
+   Get effective routes on the VM NIC in question (shows BGP routes vs UDR overrides):
+   ```azurecli
+   az network nic show-effective-route-table \
+     --resource-group <rg> \
+     --name <vm-nic-name> \
+     --output table
+   ```
+
+   Look for routes where `nextHopType` is `VirtualAppliance` or `VirtualNetworkGateway` — a UDR with `VirtualAppliance` pointing at a firewall private IP will override BGP-learned routes for that prefix.
+
+6. Test private peering connectivity directly. Use Network Watcher packet capture or PsPing to verify traffic is reaching the destination and a return path exists.
+
+   Start a packet capture on the VM NIC to see what is actually leaving:
+   ```azurecli
+   az network watcher packet-capture create \
+     --resource-group <rg> \
+     --vm <vm-name> \
+     --name capture01 \
+     --storage-account <storage-account-id> \
+     --filters '[{"protocol":"TCP","localPort":"0","remotePort":"<port>"}]'
+   ```
+
+   Test TCP reachability with PsPing from the VM (download Sysinternals or use `Test-NetConnection`):
+   ```powershell
+   # Windows — test TCP reachability and round-trip time
+   Test-NetConnection -ComputerName <on-premises-ip> -Port <port>
+   ```
+
+   ```bash
+   # Linux — equivalent with netcat
+   nc -zv <on-premises-ip> <port>
+   ```
+
+   Verify BGP peering state on the circuit from the Azure side:
+   ```azurecli
+   az network express-route show \
+     --resource-group <rg> \
+     --name <circuit-name> \
+     --query "peerings[?peeringType=='AzurePrivatePeering'].{State:state, PrimaryPeer:primaryAzurePort, SecondaryPeer:secondaryAzurePort}" \
+     --output table
+   ```
 
 **Stateful device behavior:**
 
