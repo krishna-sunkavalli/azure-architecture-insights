@@ -18,6 +18,7 @@ Krishna Sunkavalli — Sr. Solutions Engineer, Cloud & AI Platforms, Microsoft
 ### Governance
 
 - [Azure Quotas Are a Capacity Planning Problem, Not a Support Ticket](articles/governance/quotas.md) — Why quota limits surface at the worst moments and how to manage regional capacity headroom as a platform engineering discipline.
+- [Azure Landing Zones Don't Fail at Build Time](articles/landing-zones/azure-landing-zones.md) — Most landing zone problems are operational gaps, not architecture problems. Subscription vending, policy exemption workflows, connectivity drift, and how to absorb quarterly ALZ releases.
 
 ### Reliability
 
