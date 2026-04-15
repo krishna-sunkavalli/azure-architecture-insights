@@ -337,3 +337,25 @@ Every other best practice on this list can be implemented incrementally. The Def
 
 Start the migration in a non-production workspace. Validate your automation rules, playbooks, and workbooks in the unified portal before cutting over production. The operational improvement is real. Use the forcing function.
 
+---
+
+## Security Copilot: Cross-Dependencies and What Breaks Without Them
+
+Security Copilot is a separate product with its own SCU-based pricing model. It is not part of Sentinel licensing. But how you configure Sentinel directly determines how much value Security Copilot can deliver, and most teams only discover the dependency gaps after they have paid for SCUs.
+
+The integration operates through two channels: the Sentinel plugin in the standalone Security Copilot experience at securitycopilot.microsoft.com, and the embedded Copilot experience inside the Defender portal when Sentinel is onboarded there. The embedded experience is materially more capable than the standalone plugin because it operates on unified incidents that combine Sentinel alerts with Defender XDR signals in a single timeline. The standalone plugin only queries Sentinel data. This is the primary reason the Defender portal migration is not optional if Security Copilot is in your plans.
+
+The following table covers the Sentinel configuration decisions that have a direct impact on Security Copilot output quality.
+
+| Sentinel Configuration | Security Copilot Dependency | What Breaks Without It |
+|---|---|---|
+| **Defender portal onboarding** | Embedded Copilot in Defender operates on unified incidents combining Sentinel and Defender XDR data. | Without onboarding, Copilot only sees Sentinel incidents via the standalone plugin. Cross-product incident correlation, guided response, and incident reports are unavailable. |
+| **UEBA enabled with identity sources** | Copilot incident summarization surfaces entity risk scores and behavioral anomalies as contextual signals. | Without UEBA, Copilot summaries contain alert text but no behavioral context. Summaries are accurate but shallow. Triage quality degrades for identity-based attacks. |
+| **Incident classification and tagging** | Copilot learns from closed incident classifications to improve false positive identification in summaries. Natural language prompts like "show incidents closed as false positive" depend on consistent classification data. | Inconsistent or absent classification makes Copilot incident queries unreliable. The promptbook pattern of filtering by outcome breaks against untagged data. |
+| **Analytics rule descriptions** | Copilot surfaces the rule description as part of incident context when generating summaries and guided responses. | Rules deployed without descriptions produce summaries that identify an alert fired but cannot explain why it matters. Analysts receive a Copilot response with no actionable context. |
+| **Watchlists for enrichment** | Copilot can query watchlists as enrichment context in standalone prompts. Known-good IP ranges, terminated employee lists, and VIP accounts in watchlists add context Copilot cannot derive from alert data alone. | Without structured watchlist enrichment, Copilot cannot distinguish a high-privilege account alert from a routine one without analyst context injection in the prompt. |
+| **KQL plugin (NL-to-KQL)** | The Natural Language to KQL plugin generates and runs Sentinel hunting queries from plain English prompts. It queries the configured default Sentinel workspace. | Without a default workspace configured on the Sentinel plugin, NL-to-KQL queries fail silently or return results from the wrong workspace. Configure the default workspace in the Sentinel plugin settings before use. |
+| **Data quality in high-signal tables** | Copilot summarizes and correlates data from SigninLogs, SecurityAlert, SecurityIncident, and IdentityInfo. Sparse or delayed data in these tables produces incomplete summaries. | If sign-in logs have gaps (UEBA not enabled, connector not streaming), Copilot reports "no relevant identity activity" on incidents that do involve identity. Absence of data is indistinguishable from absence of activity in a summary. |
+
+The cross-dependency that most teams miss: Security Copilot quality is bounded by Sentinel data quality. SCUs purchase compute capacity for AI inference. They do not improve the underlying data. Deploying Security Copilot against a Sentinel instance with stale connectors, missing UEBA enrichment, and undescribed analytics rules produces polished summaries of incomplete information. The work to maximize Copilot value is the same work needed to run a high-quality Sentinel deployment. There is no shortcut through the AI layer.
+
