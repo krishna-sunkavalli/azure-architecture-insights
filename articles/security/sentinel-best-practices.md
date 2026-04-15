@@ -49,6 +49,12 @@ This article covers the decisions that matter, the right practice for each, the 
 | **Use case development discipline** | Map detection requirements to a framework (MITRE ATT&CK, NIST CSF) before deploying rules. Identify which assets are in scope, which log sources cover them, and which out-of-box rules apply. Avoid enabling rules without understanding what they cover or whether the required log source is even ingested. | Framework-driven coverage assessment takes time upfront. Teams under deadline pressure skip it and end up with hundreds of rules firing on incomplete data. |
 | **CI/CD for content management** | For organizations with multiple Sentinel instances, use the Repositories feature (GitHub or Azure DevOps) to manage detection rules, parsers, workbooks, and playbooks as code. This is not optional at scale: manual deployment across instances is the leading cause of configuration drift and compliance failures. | The Repositories feature requires a supported SCM platform and initial pipeline setup. Teams without DevOps capability need a simplified deployment workflow before adopting full CI/CD. |
 | **Threat intelligence activation** | Enable the free Microsoft Threat Intelligence solution from the Content Hub. Most organizations do not use CTI features in Sentinel despite their availability. The free Microsoft TI feed provides immediate IOC correlation with no additional cost. Supplement with TAXII connectors for curated commercial feeds. | Free TI feeds have limited depth compared to commercial platforms. Organizations with mature CTI programs need a dedicated TIP integrated via the Graph Security API. |
+| **Automation rules vs playbooks** | Use automation rules for lightweight, instant-response actions: closing false positives, assigning incidents, adding tags, suppressing noise. Use playbooks (Logic Apps) for anything requiring external calls, enrichment, or multi-step logic. Automation rules execute synchronously within Sentinel; playbooks execute asynchronously via Logic Apps. | Relying on playbooks for actions that automation rules can handle adds latency and Logic Apps cost unnecessarily. Start with automation rules and escalate to playbooks only when the logic requires it. |
+| **Playbook identity model** | Use a managed identity on the Logic App, not a service principal with a stored secret, for all Sentinel API calls and Azure resource interactions. Assign the Sentinel Responder role to the managed identity, scoped to the Sentinel workspace. Avoid storing credentials in playbook connections. | Managed identity eliminates secret rotation burden but requires that all downstream services support Entra ID authentication. Services that require shared keys or OAuth client credentials still need secrets, which must be stored in Key Vault, not hardcoded in the Logic App. |
+| **Playbook Logic App tier** | Use Standard tier Logic Apps (single-tenant) for production playbooks that require VNet integration, longer timeout limits, or stateful workflows. Consumption tier is acceptable for simple notification and tagging playbooks. | Standard tier Logic Apps cost more per execution and require dedicated App Service Plan capacity. For high-volume, simple playbooks, Consumption tier is more cost-effective despite its lower timeout ceiling. |
+| **Azure Function Apps for automation** | Use Azure Function Apps when playbook logic exceeds what Logic Apps connectors support natively: complex parsing, custom API calls with retry logic, or heavy data transformation. Functions are also the right choice when the playbook needs to run at high frequency where Logic Apps per-execution cost becomes significant. | Functions require developer maintenance. Logic Apps visual designer is accessible to analysts without coding skills. Use Functions for complexity that Logic Apps genuinely cannot handle, not as a default preference. |
+| **Playbook testing discipline** | Test every playbook against a real incident in a non-production Sentinel instance before enabling in production. Automation rules that trigger on every high-severity incident will execute playbooks at volume from day one. An untested playbook that errors silently is worse than no automation: it creates false confidence that triage is happening. | Non-production Sentinel instances require log sources that generate realistic incident volume. Synthetic testing against static incidents misses timing and data shape issues that only appear at production rate. |
+| **Automation rule ordering** | Automation rules execute in priority order. Place suppression and false-positive closure rules at the top of the priority stack. Detection-enrichment playbooks should run after triage rules have had the opportunity to close noise. Without explicit ordering, enrichment playbooks run on incidents that will be closed in the next rule. | Priority ordering must be reviewed when new rules are added. Teams that add automation rules ad hoc without reviewing the full order create execution conflicts that are difficult to debug. |
 
 ---
 
@@ -228,6 +234,34 @@ Usage
     AvgDailyGB = round(avg(DailyGB), 1),
     MaxDailyGB = round(max(DailyGB), 1),
     MinDailyGB = round(min(DailyGB), 1)
+```
+
+### Audit Playbook Execution Failures
+
+Playbooks that fail silently leave gaps in your automation coverage. This query surfaces automation actions that did not complete successfully over the last 7 days.
+
+```kql
+SentinelHealth
+| where TimeGenerated > ago(7d)
+| where SentinelResourceKind == "AutomationRule"
+| where Status != "Success"
+| project TimeGenerated, RuleName = SentinelResourceName, Status, Description
+| order by TimeGenerated desc
+```
+
+### Identify High-Frequency Automation Rules
+
+Automation rules firing on a high percentage of incidents may indicate misconfigured triggers or suppression rules not catching enough noise. Review any rule executing more than 50 times per day.
+
+```kql
+SentinelHealth
+| where TimeGenerated > ago(7d)
+| where SentinelResourceKind == "AutomationRule"
+| where Status == "Success"
+| summarize ExecutionCount = count() by RuleName = SentinelResourceName, bin(TimeGenerated, 1d)
+| summarize AvgDailyExecutions = round(avg(ExecutionCount), 0) by RuleName
+| where AvgDailyExecutions > 50
+| order by AvgDailyExecutions desc
 ```
 
 ### Measure Summarization Rule Coverage Savings
