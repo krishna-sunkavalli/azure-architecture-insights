@@ -37,6 +37,30 @@ This article covers the decisions that matter, the right practice for each, the 
 | **KQL query optimization** | Filter on indexed columns first (`TimeGenerated`, `Computer`, `Account`). Apply `where` before `project`. Avoid `contains` in favor of `has` for string matching. | Optimized queries are less readable for junior analysts. Add inline comments to preserve intent when tuning for performance. |
 | **Custom graph traversal** | Build identity relationship graphs (group membership, SP permissions) via Sentinel VS Code extension notebooks. Schedule as recurring jobs. | Graph creation requires Security Operator or higher. Graphs have 30-day default retention on on-demand schedules. Scheduled jobs require explicit retention configuration. |
 | **Incident management workflow** | Close incidents within 48 hours of triage. Use the incident graph before pivoting to raw logs. Tag false positives with a consistent classification for rule tuning feedback. | 48-hour SLA requires staffed tier-1 coverage. Without it, incident backlog degrades MTTR metrics and masks real signal. |
+| **Summarization rules** | Use summarization rules to pre-aggregate high-volume tables (CommonSecurityLog, Syslog, ASimNetworkSessionLogs) into compact summary tables. Run detection rules against the summary table, not the raw source. | Summarized tables lose row-level fidelity. Any rule that requires raw event detail cannot run against a summary. Raw tables must be retained in parallel for investigation. |
+
+---
+
+## When to Route Logs to the Data Lake Tier
+
+The analytics tier is not the right home for every log source. Sending everything there is how teams hit the cost wall without improving detection coverage. The question to answer for each data source is: does this table need to support real-time detection rules, UEBA signals, or sub-minute hunting? If the answer is no, it belongs in the lake.
+
+The following table provides guidance on log routing decisions by source type.
+
+| Log Source | Recommended Tier | Reason |
+|---|---|---|
+| Azure Activity Logs | Analytics (90 days) + Lake | Activity logs feed UEBA and privileged action detection. Full history in the lake for compliance. |
+| Azure Firewall / NSG Flow Logs | Lake tier (summarize for analytics) | Raw flow logs are high volume with low per-row signal. Summarize by IP, port, and direction before promoting to analytics. |
+| Sign-in logs (Entra ID) | Analytics tier | UEBA baseline and identity detection rules depend on sign-in telemetry in analytics. |
+| Syslog / CEF from Linux endpoints | Lake tier + summarization rule | Most Syslog volume is infrastructure noise. Summarize to detect anomalies; keep raw in the lake for forensics. |
+| Microsoft Defender XDR alerts | Analytics tier | Defender alerts are already correlated and low volume. They belong in analytics for incident creation. |
+| DNS query logs | Lake tier | DNS logs are extremely high volume. Promote only flagged domains or query anomalies to analytics via scheduled jobs. |
+| Audit logs (M365, Entra) | Analytics (180 days) + Lake | Compliance mandates retention. Detection rules for data exfiltration and privilege escalation need analytics-tier access. |
+| Custom application logs | Federate first | Evaluate signal value via federation before committing to ingestion. Most app logs deliver value only in correlation with other sources. |
+| Cloud infrastructure telemetry (resource logs) | Lake tier | Resource logs support forensic investigation and cost attribution. Promotion jobs can surface anomalies to analytics on a schedule. |
+| Threat intelligence feeds | Analytics tier | TI feeds power detection rules and enrichment lookups. They must remain in analytics regardless of volume. |
+
+The pattern that works in production: ingest high-fidelity signal sources (identity, alerts, TI) into analytics. Route everything else to the lake. Use summarization rules to distill high-volume sources into compact tables that analytics rules can query without the raw ingestion cost. Promote from the lake to analytics only when a source consistently delivers confirmed detections.
 
 ---
 
@@ -133,6 +157,42 @@ _GetWatchlist("")
 | summarize Rows = count() by WatchlistName = WatchlistAlias
 | where Rows > 10000
 | order by Rows desc
+```
+
+### Identify Summarization Rule Candidates
+
+Tables contributing more than 5 GB/day with no corresponding summarization rule are prime cost reduction candidates. This query surfaces the top-volume tables to evaluate.
+
+```kql
+Usage
+| where TimeGenerated > ago(7d)
+| where IsBillable == true
+| summarize DailyAvgGB = round(sum(Quantity) / 1024 / 7, 2) by DataType
+| where DailyAvgGB > 5
+| order by DailyAvgGB desc
+```
+
+### Measure Summarization Rule Coverage Savings
+
+Compare raw table volume against its corresponding summary table to quantify how much the summarization rule is compressing. Replace `ASimNetworkSessionLogs` and `NetworkSummary` with your actual table names.
+
+```kql
+let RawGB = toscalar(
+    Usage
+    | where TimeGenerated > ago(7d)
+    | where DataType == "ASimNetworkSessionLogs" and IsBillable == true
+    | summarize round(sum(Quantity) / 1024 / 7, 2)
+);
+let SummaryGB = toscalar(
+    Usage
+    | where TimeGenerated > ago(7d)
+    | where DataType == "NetworkSummary" and IsBillable == true
+    | summarize round(sum(Quantity) / 1024 / 7, 2)
+);
+print
+    RawTable_DailyGB = RawGB,
+    SummaryTable_DailyGB = SummaryGB,
+    CompressionRatio = round(RawGB / SummaryGB, 1)
 ```
 
 ---
