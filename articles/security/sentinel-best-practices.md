@@ -55,6 +55,12 @@ This article covers the decisions that matter, the right practice for each, the 
 | **Azure Function Apps for automation** | Use Azure Function Apps when playbook logic exceeds what Logic Apps connectors support natively: complex parsing, custom API calls with retry logic, or heavy data transformation. Functions are also the right choice when the playbook needs to run at high frequency where Logic Apps per-execution cost becomes significant. | Functions require developer maintenance. Logic Apps visual designer is accessible to analysts without coding skills. Use Functions for complexity that Logic Apps genuinely cannot handle, not as a default preference. |
 | **Playbook testing discipline** | Test every playbook against a real incident in a non-production Sentinel instance before enabling in production. Automation rules that trigger on every high-severity incident will execute playbooks at volume from day one. An untested playbook that errors silently is worse than no automation: it creates false confidence that triage is happening. | Non-production Sentinel instances require log sources that generate realistic incident volume. Synthetic testing against static incidents misses timing and data shape issues that only appear at production rate. |
 | **Automation rule ordering** | Automation rules execute in priority order. Place suppression and false-positive closure rules at the top of the priority stack. Detection-enrichment playbooks should run after triage rules have had the opportunity to close noise. Without explicit ordering, enrichment playbooks run on incidents that will be closed in the next rule. | Priority ordering must be reviewed when new rules are added. Teams that add automation rules ad hoc without reviewing the full order create execution conflicts that are difficult to debug. |
+| **ASIM normalization** | Use ASIM (Advanced Security Information Model) parsers for all network, authentication, DNS, and process event sources. ASIM-normalized tables enable a single detection rule to cover multiple vendor sources simultaneously. Write detection rules against ASIM schemas (`ASimNetworkSession`, `ASimAuthentication`, `ASimDns`), not raw vendor tables. | ASIM parsers add a query-time processing layer. Complex ASIM queries over very high-volume tables may show higher latency than direct table queries. For extremely performance-sensitive rules, benchmark before committing to ASIM at that frequency. |
+| **NRT analytics rules** | Use Near Real-Time (NRT) analytics rules for time-critical detections: lateral movement, privilege escalation, impossible travel, and initial access indicators. NRT rules run every minute against new data rather than on a scheduled frequency. Use them selectively: NRT rules consume significantly more compute than scheduled rules and should be reserved for detections where a 5-minute delay changes the response outcome. | NRT rules cannot use `summarize` over extended time windows. They are constrained to a single data source. Any detection requiring multi-table correlation or time-windowed aggregation must use scheduled rules. |
+| **DCR ingestion-time transformations** | Use KQL transformation rules in Data Collection Rules to enrich, filter, or reshape data at ingestion time before it reaches the Log Analytics table. This is more powerful than agent-side filtering: transformations can parse fields, add calculated columns, drop rows conditionally, and route data to different tables from a single source. | DCR transformations are applied before storage, so dropped rows cannot be recovered. Transformations that contain logic errors silently discard data. Test all transformation KQL in a staging DCR before applying to production ingestion. |
+| **Content Hub lifecycle** | Treat Content Hub solutions as packages that require maintenance. Enable automatic updates for Microsoft-managed solutions. Review the Content Hub changelog quarterly for new connectors, updated analytics rules, and revised workbook templates. Solutions installed at deployment time and never updated accumulate technical debt against the detection content that Microsoft publishes continuously. | Automatic updates apply to content templates, not deployed instances. Updated templates must still be reviewed and manually applied to active rules where customization exists. |
+| **Syslog and CEF forwarder design** | Deploy a dedicated Linux forwarder for CEF and Syslog sources. Do not install the AMA agent directly on production security appliances (firewalls, load balancers). The forwarder acts as a collector; production appliances send logs to it via UDP/TCP. Size the forwarder to handle peak volume with headroom: 500 GB/day requires at minimum a 4-core, 8 GB RAM Linux VM. | A single forwarder is a collection bottleneck and single point of failure. Environments above 300 GB/day from Syslog/CEF sources need at least two forwarders behind a load balancer. Each forwarder's AMA instance sends directly to the Log Analytics workspace without proxy. |
+| **Workspace region selection** | Deploy the Log Analytics workspace in the Azure region where the majority of log-generating resources reside. Data egress charges between Azure regions are paid on PaaS-to-PaaS transfers for IaaS (VM) sources. For global organizations without data residency requirements, East US typically offers the lowest Log Analytics and Sentinel pricing. A 17% cost difference between East US and Canada Central is meaningful at high ingestion volumes. | Choosing the lowest-cost region for a global organization may conflict with data residency or sovereignty requirements. Any compliance mandate that pins data to a specific region overrides cost optimization. Document the decision and the compliance review that cleared it. |
 
 ---
 
@@ -262,6 +268,42 @@ SentinelHealth
 | summarize AvgDailyExecutions = round(avg(ExecutionCount), 0) by RuleName
 | where AvgDailyExecutions > 50
 | order by AvgDailyExecutions desc
+```
+
+### Find High-Volume Tables With No Active Analytics Rule
+
+Tables generating significant ingestion volume with no detection rule coverage are either costing money without delivering value or represent an undetected blind spot. Either outcome requires a decision.
+
+```kql
+let ActiveRuleTables = 
+    _SentinelHealth
+    | where TimeGenerated > ago(1d)
+    | where SentinelResourceKind == "AnalyticsRule"
+    | where Status == "Success"
+    | extend TableName = tostring(parse_json(ExtendedProperties).QueryLastRunDataSourceNames)
+    | mv-expand TableName
+    | distinct tostring(TableName);
+Usage
+| where TimeGenerated > ago(7d)
+| where IsBillable == true
+| summarize DailyAvgGB = round(sum(Quantity) / 1024 / 7, 2) by DataType
+| where DailyAvgGB > 1
+| where DataType !in (ActiveRuleTables)
+| order by DailyAvgGB desc
+```
+
+### Check NRT Rule Coverage for Critical Detection Categories
+
+NRT rules should exist for lateral movement, privilege escalation, and impossible travel. This surfaces whether any NRT rules are active at all.
+
+```kql
+SecurityAlert
+| where TimeGenerated > ago(7d)
+| where ProductName == "Azure Sentinel"
+| extend RuleType = tostring(parse_json(ExtendedProperties).RuleType)
+| where RuleType == "NRT"
+| summarize AlertCount = count() by AlertName
+| order by AlertCount desc
 ```
 
 ### Measure Summarization Rule Coverage Savings
