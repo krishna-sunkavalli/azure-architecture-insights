@@ -27,6 +27,9 @@ This article covers the decisions that matter, the right practice for each, the 
 
 | Decision | Best Practice | Trade-offs |
 |---|---|---|
+| **Connector prioritization** | Enable Microsoft first-party connectors first (Defender XDR, Entra ID, M365). They are free-tier or already licensed, provide the highest signal density, and underpin UEBA and fusion detection. Add third-party connectors only after first-party coverage is complete. | Third-party connectors deferred too long can leave blind spots in non-Microsoft environments. Sequence must match actual threat surface, not licensing convenience. |
+| **Pre-ingestion log filtering** | Use Azure Monitor Agent Data Collection Rules (DCRs) to filter Windows and Linux events before ingestion. DCRs are the preferred mechanism: they keep logs in their native table type, preserve free-tier eligibility, and maintain UEBA and ML compatibility. | DCR filtering requires Azure Monitor Agent deployment. Legacy MMA-based deployments cannot use DCRs and require Logstash or custom code for filtering. |
+| **Logstash filtering trade-off** | Avoid using Logstash to filter content from logs that are on the free-tier list (Windows Security Events, Syslog via connector). Logstash re-ingests filtered output as custom logs, converting free-tier data to paid and removing UEBA, ML, and fusion support. | When Logstash is the only viable option (air-gapped environments, unsupported Linux distros), the cost and capability penalties are unavoidable. Document explicitly which tables were affected and why. |
 | **Data tier placement** | Analytics tier for tables with active detection rules, UEBA signals, or real-time hunting. Data lake tier for forensics, compliance, and historical data. | Lake-tier data requires promotion jobs before rules can fire on it. Promotion adds latency and operational complexity. |
 | **Retention strategy** | Set analytics-tier retention to match your detection lookback window (90-180 days for most rules). Use lake tier for long-term retention up to 12 years. | Longer analytics retention increases cost linearly. Shorter retention limits historical correlation without lake queries. |
 | **External data sources** | Federate data from Fabric, ADLS Gen2, or Databricks before deciding to ingest it. Use investigation outcomes to determine which federated sources earn ingestion. | Federated sources do not support detection rules or UEBA. Queries against federated data depend on source availability and access policies. |
@@ -170,6 +173,19 @@ Usage
 | summarize DailyAvgGB = round(sum(Quantity) / 1024 / 7, 2) by DataType
 | where DailyAvgGB > 5
 | order by DailyAvgGB desc
+```
+
+### Detect Custom Log Tables That May Have Lost Free-Tier Eligibility
+
+If Logstash filtering was applied to originally free-tier sources, the output lands in custom tables (`_CL` suffix) and becomes billable. This query surfaces all custom tables with significant volume.
+
+```kql
+Usage
+| where TimeGenerated > ago(30d)
+| where IsBillable == true
+| where DataType endswith "_CL"
+| summarize TotalGB = round(sum(Quantity) / 1024, 2) by DataType
+| order by TotalGB desc
 ```
 
 ### Measure Summarization Rule Coverage Savings
