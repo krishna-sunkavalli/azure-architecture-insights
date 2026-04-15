@@ -41,6 +41,14 @@ This article covers the decisions that matter, the right practice for each, the 
 | **Custom graph traversal** | Build identity relationship graphs (group membership, SP permissions) via Sentinel VS Code extension notebooks. Schedule as recurring jobs. | Graph creation requires Security Operator or higher. Graphs have 30-day default retention on on-demand schedules. Scheduled jobs require explicit retention configuration. |
 | **Incident management workflow** | Close incidents within 48 hours of triage. Use the incident graph before pivoting to raw logs. Tag false positives with a consistent classification for rule tuning feedback. | 48-hour SLA requires staffed tier-1 coverage. Without it, incident backlog degrades MTTR metrics and masks real signal. |
 | **Summarization rules** | Use summarization rules to pre-aggregate high-volume tables (CommonSecurityLog, Syslog, ASimNetworkSessionLogs) into compact summary tables. Run detection rules against the summary table, not the raw source. | Summarized tables lose row-level fidelity. Any rule that requires raw event detail cannot run against a summary. Raw tables must be retained in parallel for investigation. |
+| **Operational vs security log separation** | Do not enable Sentinel on a Log Analytics workspace that stores both security and operational logs (performance counters, diagnostics) unless you have explicitly decided to pay Sentinel pricing on the full dataset. Sentinel pricing applies to all billable data in the workspace. | Keeping separate workspaces increases management overhead. Some organizations accept the cost to gain cross-data correlation. Make the decision explicitly, not by accident. |
+| **Commitment tier pricing** | Switch from pay-as-you-go to a Commitment Tier at 100 GB/day ingestion. The discount is meaningful at that volume and increases with scale. Organizations above 500 GB/day should evaluate the dedicated cluster option for further savings and improved query performance. | Commitment tiers require predicting ingestion volume. Over-committing wastes budget. Under-committing negates the discount. Sample log sources for a full week before selecting a tier. |
+| **RBAC role assignment** | Assign the minimum Sentinel role per function: Reader for analysts querying data, Responder for SOC tier-1 closing incidents, Contributor for engineers building rules and connectors. Apply table-level RBAC for sensitive data types that specific teams should not see. | Table-level RBAC is applied per Log Analytics table, not per Sentinel workspace. It requires custom role definitions and adds ongoing access management overhead. |
+| **Multi-workspace design** | Use a single workspace unless you have a documented reason for multiple: strict data segregation requirements (regulatory/compliance), OT/IT environment separation, multi-tenant management via Lighthouse, or a cost allocation requirement between business units. | Multiple workspaces increase management complexity, require cross-workspace KQL for unified hunting, and can complicate automation playbooks. Azure Lighthouse does not support custom RBAC roles across tenants. |
+| **Alert rule tuning lifecycle** | Treat rule deployment as a lifecycle, not a one-time event. During initial deployment, review rules weekly. Once the environment stabilizes, move to monthly reviews. Enable rules in batches of 10-20 at most. Tuning alert fatigue is the top reason SIEM deployments fail to deliver value. | Batched enablement slows time-to-coverage. The risk of analyst fatigue from untuned rules is greater than the risk of brief coverage gaps during staged rollout. |
+| **Use case development discipline** | Map detection requirements to a framework (MITRE ATT&CK, NIST CSF) before deploying rules. Identify which assets are in scope, which log sources cover them, and which out-of-box rules apply. Avoid enabling rules without understanding what they cover or whether the required log source is even ingested. | Framework-driven coverage assessment takes time upfront. Teams under deadline pressure skip it and end up with hundreds of rules firing on incomplete data. |
+| **CI/CD for content management** | For organizations with multiple Sentinel instances, use the Repositories feature (GitHub or Azure DevOps) to manage detection rules, parsers, workbooks, and playbooks as code. This is not optional at scale: manual deployment across instances is the leading cause of configuration drift and compliance failures. | The Repositories feature requires a supported SCM platform and initial pipeline setup. Teams without DevOps capability need a simplified deployment workflow before adopting full CI/CD. |
+| **Threat intelligence activation** | Enable the free Microsoft Threat Intelligence solution from the Content Hub. Most organizations do not use CTI features in Sentinel despite their availability. The free Microsoft TI feed provides immediate IOC correlation with no additional cost. Supplement with TAXII connectors for curated commercial feeds. | Free TI feeds have limited depth compared to commercial platforms. Organizations with mature CTI programs need a dedicated TIP integrated via the Graph Security API. |
 
 ---
 
@@ -186,6 +194,40 @@ Usage
 | where DataType endswith "_CL"
 | summarize TotalGB = round(sum(Quantity) / 1024, 2) by DataType
 | order by TotalGB desc
+```
+
+### Separate Operational vs Security Log Volume
+
+If operational logs (performance counters, diagnostics) share the same workspace as Sentinel, this query surfaces how much billable data is from non-security sources. That volume is paying Sentinel pricing unnecessarily.
+
+```kql
+Usage
+| where TimeGenerated > ago(30d)
+| where IsBillable == true
+| summarize TotalGB = round(sum(Quantity) / 1024, 2) by DataType
+| extend LogCategory = case(
+    DataType in ("SecurityEvent", "CommonSecurityLog", "Syslog", "SecurityAlert",
+                 "SecurityIncident", "AzureActivity", "SigninLogs", "AuditLogs",
+                 "OfficeActivity", "ThreatIntelligenceIndicator", "DeviceEvents"),
+    "Security",
+    "Operational"
+  )
+| summarize TotalGB = sum(TotalGB) by LogCategory
+```
+
+### Check Commitment Tier Fit
+
+Compare your actual 30-day average daily ingestion against your current commitment tier. A consistent overage above 15% means the next tier up pays for itself.
+
+```kql
+Usage
+| where TimeGenerated > ago(30d)
+| where IsBillable == true
+| summarize DailyGB = sum(Quantity) / 1024 by bin(TimeGenerated, 1d)
+| summarize
+    AvgDailyGB = round(avg(DailyGB), 1),
+    MaxDailyGB = round(max(DailyGB), 1),
+    MinDailyGB = round(min(DailyGB), 1)
 ```
 
 ### Measure Summarization Rule Coverage Savings
