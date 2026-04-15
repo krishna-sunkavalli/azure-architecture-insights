@@ -24,6 +24,10 @@ Krishna Sunkavalli — Sr. Solutions Engineer, Cloud & AI Platforms, Microsoft
 
 - [How to Design for Regional Failures in Azure](articles/reliability/resiliency.md) — Resiliency strategy and common pitfalls for 25 Azure services, from Front Door and AKS to Fabric, Databricks, and Microsoft Foundry.
 
+### Security
+
+- [Sentinel Is an Architecture Decision, Not a SIEM Configuration](articles/security/sentinel-best-practices.md) — Most teams solve Sentinel cost and coverage problems by tuning ingestion. The real fix is a data architecture that separates visibility from ownership.
+
 ---
 
 Licensed under [CC BY 4.0](LICENSE). Content may be shared or adapted with attribution.
