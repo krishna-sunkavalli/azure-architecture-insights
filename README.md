@@ -26,7 +26,7 @@ Krishna Sunkavalli — Sr. Solutions Engineer, Cloud & AI Platforms, Microsoft
 
 ### Security
 
-- [Sentinel Is an Architecture Decision, Not a SIEM Configuration](articles/security/sentinel-best-practices.md) — Most teams solve Sentinel cost and coverage problems by tuning ingestion. The real fix is a data architecture that separates visibility from ownership.
+- [Microsoft Sentinel Best Practices: Decisions, Trade-offs, and Validation](articles/security/sentinel-best-practices.md) — Practical Sentinel decisions every SOC architect faces, the right call for each, the trade-offs to own, and KQL to validate your environment.
 
 ---
 
