@@ -370,7 +370,11 @@ Asymmetric routing is the most consistently misdiagnosed issue in hybrid Azure e
 
 **How it happens in practice:**
 
-A workload in Azure sends a request to an on-premises endpoint. The return path selection on the on-premises router prefers the internet route over the ExpressRoute route, or vice versa. A stateful firewall on one side allows the initial packet, then drops the return because it never saw the session established. The application logs a timeout.
+The most common trigger is coexistence of an internet path and an ExpressRoute path to the same destination. When you bring up an ExpressRoute circuit, Microsoft begins advertising more-specific prefixes over it for services reachable via that circuit. Your on-premises routers see those more-specific advertisements and prefer ExpressRoute for outbound traffic to those destinations. But if your public IP addresses are not also advertised back to Microsoft over ExpressRoute, Microsoft has no ER-learned route for your source addresses. Microsoft's return traffic takes the internet path. A stateful firewall at your internet edge sees a return packet for a session it never established — because the outbound flow left via ExpressRoute — and drops it.
+
+The same inversion applies in the other direction. If you share a NAT pool across both internet and ExpressRoute, Microsoft receives the same prefix from two paths. ExpressRoute wins due to prefix length or local preference. Return traffic arrives over ExpressRoute into a firewall that only saw the original connection over the internet path. Same result: dropped packets, no error logged by BGP or the circuit.
+
+The fix for the prefix-advertisement scenario is routing discipline: advertise your public IPs only over the path you intend return traffic to use. If AD FS traffic should use ExpressRoute, advertise the AD FS public IP over ExpressRoute and not over internet. If mail traffic should stay on internet, do not advertise the mail server's IP over ExpressRoute. The alternative is SNAT at the device receiving the traffic, so the return path always goes back to the same interface regardless of how routing resolved the source address.
 
 **The diagnostic sequence:**
 
