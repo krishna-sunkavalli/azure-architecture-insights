@@ -14,6 +14,7 @@ Krishna Sunkavalli — Sr. Solutions Engineer, Cloud & AI Platforms, Microsoft
 
 - [DNS Resolution in Azure: Getting It Right at Scale](articles/network/dns.md) — Enterprise DNS architecture: Private Resolver, Firewall DNS Proxy, Private Endpoints, and hybrid resolution at scale.
 - [ExpressRoute in Production: Design Decisions, Common Failures, and Troubleshooting](articles/network/expressroute.md) — Why most ExpressRoute failures are routing decisions made at design time, and how to diagnose asymmetric routing before it becomes a two-day incident.
+- [The /32 You Didn't Put There: How Private Endpoints Really Route Traffic](articles/network/private-endpoints-routing.md) — Private endpoints are control plane constructs, not data plane proxies. How /32 route injection, network policies, and hub-and-spoke topology interact in ways that bypass firewalls silently.
 
 ### Governance
 

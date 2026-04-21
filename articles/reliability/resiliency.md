@@ -257,3 +257,5 @@ Resiliency is only as strong as the weakest service in the stack. The following 
 Resiliency is not a feature you turn on. It is a set of deliberate decisions made per service, per failure domain, and per workload criticality. Not every workload needs active-active across regions. But every workload needs an honest answer to the question: what happens when this region is unavailable, and have we tested it?
 
 The patterns above are a starting point. The real work is translating them into architecture decisions, validating them in DR drills, and revisiting them every time the stack changes. Untested resiliency is not resiliency — it is an assumption.
+
+For structured failure injection, Azure Chaos Studio provides native experiments that target VMs, AKS nodes, App Services, Cosmos DB, and networking components without requiring custom scripts or manual teardown. Run it in pre-production to baseline actual RTO and RPO figures. Run it quarterly in production — carefully scoped — to validate that the architecture still behaves as designed after months of incremental changes.
