@@ -53,6 +53,8 @@ The decisions that determine whether your DNS architecture scales, survives fail
 | | Custom RBAC role - privateDnsZones/join/action at Connectivity MG | Covers DINE gaps. App teams self-register. Cannot edit others' records. | Valid |
 | **DNS During Regional Failover** | Resolver per region + secondary forwarder targets on AD DNS | On-prem PE resolution survives primary region failure. Private DNS Zones are global; no zone replication needed. Resolver endpoints and forwarding logic still require regional redundancy. | Recommended |
 | | Single region Resolver, no secondary targets | Primary region event kills on-prem PE resolution. DR gap found during incident. | Avoid |
+| **NXDOMAIN fallback in hybrid / multiregion scenarios** | `NxDomainRedirect` policy on VNet link | Retries NXDOMAIN via Azure public recursive resolvers. Covers cross-tenant, DR, and hybrid gaps without custom forwarders. Network controls (NSG, Firewall, UDR) are unaffected. | Recommended where PE records may be absent |
+| | No fallback configured | NXDOMAIN causes application failure when a PE record is missing. DR failover silently breaks in cross-tenant and multiregion paths. | Avoid in hybrid architectures |
 
 *The source spreadsheet for this table is available in the [GitHub repository](https://github.com/krishna-sunkavalli/azure-architecture-insights).*
 
@@ -71,6 +73,7 @@ The decisions that determine whether your DNS architecture scales, survives fail
 - **Resolver in every production region.** Private DNS Zones are global. A second Resolver is additive. No zone sync, no conflict.
 - **Firewall DNS Proxy as the query log.** Every query captured via `AzureFirewallDnsProxy` in Azure Monitor. Full visibility comes with the architecture, no additional instrumentation required.
 - **DNS Security Policy as the enforcement layer.** Applied at the VNet level, it evaluates queries before they leave the spoke: allow, block, or alert by domain list, with optional Microsoft Threat Intelligence feed for known malicious domains. It complements Firewall DNS Proxy. Centralized resolution makes policy enforcement consistent across the estate.
+- **`NxDomainRedirect` on VNet links for hybrid and multiregion scenarios.** Private DNS zones return NXDOMAIN when a record is absent, not only when a zone is missing. In cross-tenant, multiregion DR, and hybrid connectivity paths, a PE record may not exist in the resolving zone scope. Set `resolutionPolicy = NxDomainRedirect` on VNet links for workloads that cross those boundaries. Azure retries on NXDOMAIN via public recursive resolvers, keeping resolution paths alive without custom forwarders. Network controls (NSG, Firewall, UDR) are unaffected; the fallback is DNS-only.
 
 *This is not a complex architecture. It is a set of deliberate decisions made at the right moment, before the estate grows, before the incident, before the retroactive fix becomes a project.*
 
