@@ -28,6 +28,11 @@ Krishna Sunkavalli — Sr. Solutions Engineer, Cloud & AI Platforms, Microsoft
 ### Security
 
 - [Microsoft Sentinel Best Practices: Decisions, Trade-offs, and Validation](articles/security/sentinel-best-practices.md) — Practical Sentinel decisions every SOC architect faces, the right call for each, the trade-offs to own, and KQL to validate your environment.
+- [Defender for AI Services and AI SPM: KQL Reference for SOC Teams](articles/security/defender-for-ai-services.md) — A practical KQL reference for SOC analysts investigating AI workload threats, validating Defender for AI Services coverage, and troubleshooting AI SPM posture gaps.
+
+### Compute
+
+- [Azure Local Is No Longer a Small-Footprint/Edge Play](articles/compute/azure-local-for-vmware-admins.md) — A VMware admin's translation guide to Azure Local: feature mapping, honest gaps, and the architectural decisions that determine whether the migration makes sense.
 
 ---
 
